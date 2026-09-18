@@ -32,6 +32,13 @@ public class Board
     private readonly int m_spawnBatchSize;
     private readonly int m_spawnFrameInterval;
 
+    // Rebuilt from the current cells at the start of each refill, after items have shifted.
+    private readonly Dictionary<Vector2Int, NormalItem.eNormalType> m_refillTypesByPosition = new Dictionary<Vector2Int, NormalItem.eNormalType>();
+    private readonly Dictionary<NormalItem.eNormalType, int> m_refillTypeCounts = new Dictionary<NormalItem.eNormalType, int>();
+    private readonly HashSet<NormalItem.eNormalType> m_neighbourTypes = new HashSet<NormalItem.eNormalType>();
+    private readonly List<NormalItem.eNormalType> m_refillCandidates = new List<NormalItem.eNormalType>(7);
+    private static readonly NormalItem.eNormalType[] s_normalTypes = (NormalItem.eNormalType[])Enum.GetValues(typeof(NormalItem.eNormalType));
+
     public Board(Transform transform, GameSettings gameSettings, ObjectPool<Cell> cellPool, ItemViewPool itemViewPool)
     {
         m_root = transform;
@@ -150,6 +157,7 @@ public class Board
 
     internal IEnumerator FillGapsWithNewItems()
     {
+        RebuildRefillTracking();
         int spawned = 0;
         for (int x = 0; x < boardSizeX; x++)
         {
@@ -160,15 +168,58 @@ public class Board
 
                 NormalItem item = new NormalItem();
 
-                item.SetType(Utils.GetRandomNormalType());
+                item.SetType(SelectRefillType(cell));
                 item.SetView(m_itemFactory, m_root, m_skin);
 
                 cell.Assign(item);
                 cell.ApplyItemPosition(true);
+                m_refillTypesByPosition[new Vector2Int(x, y)] = item.ItemType;
+                m_refillTypeCounts[item.ItemType]++;
                 if (++spawned % m_spawnBatchSize == 0)
                     for (int frame = 0; frame < m_spawnFrameInterval; frame++) yield return null;
             }
         }
+    }
+
+    private void RebuildRefillTracking()
+    {
+        m_refillTypesByPosition.Clear();
+        m_refillTypeCounts.Clear();
+        foreach (NormalItem.eNormalType type in s_normalTypes)
+            m_refillTypeCounts.Add(type, 0);
+
+        for (int x = 0; x < boardSizeX; x++)
+        {
+            for (int y = 0; y < boardSizeY; y++)
+            {
+                NormalItem item = m_cells[x, y].Item as NormalItem;
+                if (item == null) continue; // Empty cells and bonuses have no normal type.
+                m_refillTypesByPosition.Add(new Vector2Int(x, y), item.ItemType);
+                m_refillTypeCounts[item.ItemType]++;
+            }
+        }
+    }
+
+    private NormalItem.eNormalType SelectRefillType(Cell cell)
+    {
+        cell.GetNeighbourTypes(m_refillTypesByPosition, m_neighbourTypes);
+        m_refillCandidates.Clear();
+        int lowestCount = int.MaxValue;
+
+        foreach (NormalItem.eNormalType type in s_normalTypes)
+        {
+            if (m_neighbourTypes.Contains(type)) continue;
+            int count = m_refillTypeCounts[type];
+            if (count < lowestCount)
+            {
+                lowestCount = count;
+                m_refillCandidates.Clear();
+            }
+            if (count == lowestCount) m_refillCandidates.Add(type);
+        }
+
+        // Seven normal types and at most four neighbours always leave a valid choice.
+        return m_refillCandidates[UnityEngine.Random.Range(0, m_refillCandidates.Count)];
     }
 
     internal void ExplodeAllItems()

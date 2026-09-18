@@ -1,5 +1,6 @@
 ﻿using System;
 using UnityEngine;
+using System.Collections.Generic;
 
 public class Cell : MonoBehaviour
 {
@@ -32,6 +33,27 @@ public class Cell : MonoBehaviour
             BoardY == other.BoardY && Mathf.Abs(BoardX - other.BoardX) == 1;
     }
 
+
+    public void GetNeighbourTypes(
+        IReadOnlyDictionary<Vector2Int, NormalItem.eNormalType> typesByPosition,
+        HashSet<NormalItem.eNormalType> result)
+    {
+        result.Clear();
+        AddNeighbourType(NeighbourUp, typesByPosition, result);
+        AddNeighbourType(NeighbourRight, typesByPosition, result);
+        AddNeighbourType(NeighbourBottom, typesByPosition, result);
+        AddNeighbourType(NeighbourLeft, typesByPosition, result);
+    }
+
+    private static void AddNeighbourType(Cell neighbour,
+        IReadOnlyDictionary<Vector2Int, NormalItem.eNormalType> typesByPosition,
+        HashSet<NormalItem.eNormalType> result)
+    {
+        if (neighbour == null) return;
+        NormalItem.eNormalType type;
+        if (typesByPosition.TryGetValue(new Vector2Int(neighbour.BoardX, neighbour.BoardY), out type))
+            result.Add(type);
+    }
 
     public void Free()
     {
