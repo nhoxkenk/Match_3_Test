@@ -45,11 +45,21 @@ public class GameManager : MonoBehaviour
 
     private LevelCondition m_levelCondition;
 
+    private ObjectPool<Cell> m_cellPool;
+    private ItemViewPool m_itemViewPool;
+    private Coroutine m_cellPoolWarmup;
+    private bool m_loadingLevel;
+
     private void Awake()
     {
         State = eStateGame.SETUP;
 
         m_gameSettings = Resources.Load<GameSettings>(Constants.GAME_SETTINGS_PATH);
+
+        Cell cellPrefab = Resources.Load<GameObject>(Constants.PREFAB_CELL_BACKGROUND).GetComponent<Cell>();
+        m_cellPool = new ObjectPool<Cell>(cellPrefab, transform);
+        m_itemViewPool = new ItemViewPool(transform);
+        m_cellPoolWarmup = StartCoroutine(m_cellPool.Prewarm(m_gameSettings.BoardSizeX * m_gameSettings.BoardSizeY));
 
         m_uiMenu = FindObjectOfType<UIMainManager>();
         m_uiMenu.Setup(this);
@@ -83,8 +93,18 @@ public class GameManager : MonoBehaviour
 
     public void LoadLevel(eLevelMode mode)
     {
+        if (m_loadingLevel || m_boardController != null) return;
+        m_loadingLevel = true;
+        StartCoroutine(LoadLevelCoroutine(mode));
+    }
+
+    private IEnumerator LoadLevelCoroutine(eLevelMode mode)
+    {
+        // Wait if Play was clicked before the menu finished prewarming the cells.
+        yield return m_cellPoolWarmup;
+
         m_boardController = new GameObject("BoardController").AddComponent<BoardController>();
-        m_boardController.StartGame(this, m_gameSettings);
+        yield return m_boardController.StartGame(this, m_gameSettings, m_cellPool, m_itemViewPool);
 
         if (mode == eLevelMode.MOVES)
         {
@@ -100,6 +120,7 @@ public class GameManager : MonoBehaviour
         m_levelCondition.ConditionCompleteEvent += GameOver;
 
         State = eStateGame.GAME_STARTED;
+        m_loadingLevel = false;
     }
 
     public void GameOver()

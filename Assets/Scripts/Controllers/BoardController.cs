@@ -9,7 +9,7 @@ public class BoardController : MonoBehaviour
 {
     public event Action OnMoveEvent = delegate { };
 
-    public bool IsBusy { get; private set; }
+    public bool IsBusy { get; private set; } = true;
 
     private Board m_board;
 
@@ -31,7 +31,7 @@ public class BoardController : MonoBehaviour
 
     private bool m_gameOver;
 
-    public void StartGame(GameManager gameManager, GameSettings gameSettings)
+    public IEnumerator StartGame(GameManager gameManager, GameSettings gameSettings, ObjectPool<Cell> cellPool, ItemViewPool itemViewPool)
     {
         m_gameManager = gameManager;
 
@@ -41,15 +41,13 @@ public class BoardController : MonoBehaviour
 
         m_cam = Camera.main;
 
-        m_board = new Board(this.transform, gameSettings);
-
-        Fill();
-    }
-
-    private void Fill()
-    {
-        m_board.Fill();
+        m_board = new Board(this.transform, gameSettings, cellPool, itemViewPool);
+        yield return m_board.CreateBoard();
+        yield return null;
+        yield return m_board.Fill();
+        yield return null;
         FindMatchesAndCollapse();
+        while (IsBusy) yield return null;
     }
 
     private void OnGameStateChange(GameManager.eStateGame state)
@@ -72,6 +70,7 @@ public class BoardController : MonoBehaviour
 
     public void Update()
     {
+        if (m_gameManager == null || m_gameManager.State != GameManager.eStateGame.GAME_STARTED) return;
         if (m_gameOver) return;
         if (IsBusy) return;
 
@@ -238,7 +237,7 @@ public class BoardController : MonoBehaviour
 
         yield return new WaitForSeconds(0.2f);
 
-        m_board.FillGapsWithNewItems();
+        yield return m_board.FillGapsWithNewItems();
 
         yield return new WaitForSeconds(0.2f);
 
@@ -251,7 +250,7 @@ public class BoardController : MonoBehaviour
 
         yield return new WaitForSeconds(0.2f);
 
-        m_board.Fill();
+        yield return m_board.Fill();
 
         yield return new WaitForSeconds(0.2f);
 
@@ -281,6 +280,11 @@ public class BoardController : MonoBehaviour
 
     internal void Clear()
     {
+        IsBusy = true;
+        m_gameOver = true;
+        StopAllCoroutines();
+        StopHints();
+        m_gameManager.StateChangedAction -= OnGameStateChange;
         m_board.Clear();
     }
 
@@ -296,6 +300,7 @@ public class BoardController : MonoBehaviour
     private void StopHints()
     {
         m_hintIsShown = false;
+        if (m_potentialMatch == null) return;
         foreach (var cell in m_potentialMatch)
         {
             cell.StopHintAnimation();

@@ -25,9 +25,18 @@ public class Board
 
     private int m_matchMin;
 
-    public Board(Transform transform, GameSettings gameSettings)
+    private readonly ObjectPool<Cell> m_cellPool;
+    private readonly ItemViewPool m_itemViewPool;
+    private readonly int m_spawnBatchSize;
+    private readonly int m_spawnFrameInterval;
+
+    public Board(Transform transform, GameSettings gameSettings, ObjectPool<Cell> cellPool, ItemViewPool itemViewPool)
     {
         m_root = transform;
+        m_cellPool = cellPool;
+        m_itemViewPool = itemViewPool;
+        m_spawnBatchSize = Mathf.Max(1, gameSettings.SpawnBatchSize);
+        m_spawnFrameInterval = Mathf.Max(1, gameSettings.SpawnFrameInterval);
 
         m_matchMin = gameSettings.MatchesMin;
 
@@ -36,25 +45,22 @@ public class Board
 
         m_cells = new Cell[boardSizeX, boardSizeY];
 
-        CreateBoard();
     }
 
-    private void CreateBoard()
+    public IEnumerator CreateBoard()
     {
+        int spawned = 0;
         Vector3 origin = new Vector3(-boardSizeX * 0.5f + 0.5f, -boardSizeY * 0.5f + 0.5f, 0f);
-        GameObject prefabBG = Resources.Load<GameObject>(Constants.PREFAB_CELL_BACKGROUND);
         for (int x = 0; x < boardSizeX; x++)
         {
             for (int y = 0; y < boardSizeY; y++)
             {
-                GameObject go = GameObject.Instantiate(prefabBG);
-                go.transform.position = origin + new Vector3(x, y, 0f);
-                go.transform.SetParent(m_root);
-
-                Cell cell = go.GetComponent<Cell>();
+                Cell cell = m_cellPool.Get(m_root, origin + new Vector3(x, y, 0f));
                 cell.Setup(x, y);
 
                 m_cells[x, y] = cell;
+                if (++spawned % m_spawnBatchSize == 0)
+                    for (int frame = 0; frame < m_spawnFrameInterval; frame++) yield return null;
             }
         }
 
@@ -72,8 +78,9 @@ public class Board
 
     }
 
-    internal void Fill()
+    public IEnumerator Fill()
     {
+        int spawned = 0;
         for (int x = 0; x < boardSizeX; x++)
         {
             for (int y = 0; y < boardSizeY; y++)
@@ -101,11 +108,12 @@ public class Board
                 }
 
                 item.SetType(Utils.GetRandomNormalTypeExcept(types.ToArray()));
-                item.SetView();
-                item.SetViewRoot(m_root);
+                item.SetView(m_itemViewPool, m_root);
 
                 cell.Assign(item);
                 cell.ApplyItemPosition(false);
+                if (++spawned % m_spawnBatchSize == 0)
+                    for (int frame = 0; frame < m_spawnFrameInterval; frame++) yield return null;
             }
         }
     }
@@ -136,8 +144,9 @@ public class Board
     }
 
 
-    internal void FillGapsWithNewItems()
+    internal IEnumerator FillGapsWithNewItems()
     {
+        int spawned = 0;
         for (int x = 0; x < boardSizeX; x++)
         {
             for (int y = 0; y < boardSizeY; y++)
@@ -148,11 +157,12 @@ public class Board
                 NormalItem item = new NormalItem();
 
                 item.SetType(Utils.GetRandomNormalType());
-                item.SetView();
-                item.SetViewRoot(m_root);
+                item.SetView(m_itemViewPool, m_root);
 
                 cell.Assign(item);
                 cell.ApplyItemPosition(true);
+                if (++spawned % m_spawnBatchSize == 0)
+                    for (int frame = 0; frame < m_spawnFrameInterval; frame++) yield return null;
             }
         }
     }
@@ -282,8 +292,7 @@ public class Board
                 cellToConvert = matches[rnd];
             }
 
-            item.SetView();
-            item.SetViewRoot(m_root);
+            item.SetView(m_itemViewPool, m_root);
 
             cellToConvert.Free();
             cellToConvert.Assign(item);
@@ -667,11 +676,13 @@ public class Board
             for (int y = 0; y < boardSizeY; y++)
             {
                 Cell cell = m_cells[x, y];
+                if (cell == null) continue;
                 cell.Clear();
 
-                GameObject.Destroy(cell.gameObject);
+                m_cellPool.Release(cell);
                 m_cells[x, y] = null;
             }
         }
+        m_itemViewPool.ReleaseAll();
     }
 }

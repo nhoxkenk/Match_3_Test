@@ -11,18 +11,17 @@ public class Item
 
     public Transform View { get; private set; }
 
+    private ItemViewPool m_viewPool;
 
-    public virtual void SetView()
+
+    public virtual void SetView(ItemViewPool viewPool, Transform root)
     {
+        m_viewPool = viewPool;
         string prefabname = GetPrefabName();
 
         if (!string.IsNullOrEmpty(prefabname))
         {
-            GameObject prefab = Resources.Load<GameObject>(prefabname);
-            if (prefab)
-            {
-                View = GameObject.Instantiate(prefab).transform;
-            }
+            View = m_viewPool.Get(prefabname, root);
         }
     }
 
@@ -101,7 +100,7 @@ public class Item
             View.DOScale(0.1f, 0.1f).OnComplete(
                 () =>
                 {
-                    GameObject.Destroy(View.gameObject);
+                    m_viewPool.Release(View);
                     View = null;
                 }
                 );
@@ -132,7 +131,9 @@ public class Item
 
         if (View)
         {
-            GameObject.Destroy(View.gameObject);
+            // Do not let an old move callback access cells reused by the next board.
+            View.DOKill();
+            m_viewPool.Release(View);
             View = null;
         }
     }

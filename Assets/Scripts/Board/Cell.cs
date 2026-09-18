@@ -61,6 +61,11 @@ public class Cell : MonoBehaviour
             Item.Clear();
             Item = null;
         }
+
+        NeighbourUp = null;
+        NeighbourRight = null;
+        NeighbourBottom = null;
+        NeighbourLeft = null;
     }
 
     internal bool IsSameType(Cell other)
