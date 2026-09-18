@@ -284,8 +284,8 @@ public class BoardController : MonoBehaviour
         m_gameOver = true;
         StopAllCoroutines();
         StopHints();
-        m_gameManager.StateChangedAction -= OnGameStateChange;
-        m_board.Clear();
+        if (m_gameManager != null) m_gameManager.StateChangedAction -= OnGameStateChange;
+        if (m_board != null) m_board.Clear();
     }
 
     private void ShowHint()

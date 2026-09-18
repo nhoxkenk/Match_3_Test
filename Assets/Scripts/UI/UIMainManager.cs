@@ -60,6 +60,7 @@ public class UIMainManager : MonoBehaviour
             case GameManager.eStateGame.MAIN_MENU:
                 ShowMenu<UIPanelMain>();
                 break;
+            case GameManager.eStateGame.LOADING:
             case GameManager.eStateGame.GAME_STARTED:
                 ShowMenu<UIPanelGame>();
                 break;
@@ -80,6 +81,8 @@ public class UIMainManager : MonoBehaviour
             if(menu is T)
             {
                 menu.Show();
+                if (menu is UIPanelGame game)
+                    game.SetLoading(m_gameManager.State == GameManager.eStateGame.LOADING);
             }
             else
             {
@@ -102,6 +105,11 @@ public class UIMainManager : MonoBehaviour
     internal void ShowPauseMenu()
     {
         m_gameManager.SetState(GameManager.eStateGame.PAUSE);
+    }
+
+    internal void RestartLevel()
+    {
+        m_gameManager.RestartLevel();
     }
 
     internal void LoadLevelMoves()

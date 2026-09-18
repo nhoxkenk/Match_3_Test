@@ -9,12 +9,32 @@ public class UIPanelGame : MonoBehaviour,IMenu
     public Text LevelConditionView;
 
     [SerializeField] private Button btnPause;
+    [SerializeField] private Button btnRestart;
 
     private UIMainManager m_mngr;
 
     private void Awake()
     {
         btnPause.onClick.AddListener(OnClickPause);
+        btnRestart.onClick.AddListener(OnClickRestart);
+    }
+
+    private void OnDestroy()
+    {
+        if (btnPause) btnPause.onClick.RemoveListener(OnClickPause);
+        if (btnRestart) btnRestart.onClick.RemoveListener(OnClickRestart);
+    }
+
+    private void OnClickRestart()
+    {
+        m_mngr.RestartLevel();
+    }
+
+    internal void SetLoading(bool loading)
+    {
+        btnPause.interactable = !loading;
+        btnRestart.interactable = !loading;
+        if (loading) LevelConditionView.text = string.Empty;
     }
 
     private void OnClickPause()
