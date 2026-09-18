@@ -11,18 +11,19 @@ public class Item
 
     public Transform View { get; private set; }
 
-    private ItemViewPool m_viewPool;
+    private ItemFactory m_factory;
 
 
-    public virtual void SetView(ItemViewPool viewPool, Transform root)
+    public virtual void SetView(ItemFactory factory, Transform root, SkinType skin)
     {
-        m_viewPool = viewPool;
-        string prefabname = GetPrefabName();
+        m_factory = factory;
+        View = CreateView(factory, root, skin);
+    }
 
-        if (!string.IsNullOrEmpty(prefabname))
-        {
-            View = m_viewPool.Get(prefabname, root);
-        }
+    protected virtual Transform CreateView(ItemFactory factory, Transform root, SkinType skin)
+    {
+        string prefabname = GetPrefabName();
+        return string.IsNullOrEmpty(prefabname) ? null : factory.Create(prefabname, root);
     }
 
     protected virtual string GetPrefabName() { return string.Empty; }
@@ -100,7 +101,7 @@ public class Item
             View.DOScale(0.1f, 0.1f).OnComplete(
                 () =>
                 {
-                    m_viewPool.Release(View);
+                    m_factory.Release(View);
                     View = null;
                 }
                 );
@@ -133,7 +134,7 @@ public class Item
         {
             // Do not let an old move callback access cells reused by the next board.
             View.DOKill();
-            m_viewPool.Release(View);
+            m_factory.Release(View);
             View = null;
         }
     }

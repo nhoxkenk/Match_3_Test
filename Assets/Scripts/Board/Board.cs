@@ -27,6 +27,8 @@ public class Board
 
     private readonly ObjectPool<Cell> m_cellPool;
     private readonly ItemViewPool m_itemViewPool;
+    private readonly ItemFactory m_itemFactory;
+    private readonly SkinType m_skin;
     private readonly int m_spawnBatchSize;
     private readonly int m_spawnFrameInterval;
 
@@ -35,6 +37,8 @@ public class Board
         m_root = transform;
         m_cellPool = cellPool;
         m_itemViewPool = itemViewPool;
+        m_itemFactory = new ItemFactory(itemViewPool, gameSettings.ItemSkins);
+        m_skin = gameSettings.ItemSkin;
         m_spawnBatchSize = Mathf.Max(1, gameSettings.SpawnBatchSize);
         m_spawnFrameInterval = Mathf.Max(1, gameSettings.SpawnFrameInterval);
 
@@ -108,7 +112,7 @@ public class Board
                 }
 
                 item.SetType(Utils.GetRandomNormalTypeExcept(types.ToArray()));
-                item.SetView(m_itemViewPool, m_root);
+                item.SetView(m_itemFactory, m_root, m_skin);
 
                 cell.Assign(item);
                 cell.ApplyItemPosition(false);
@@ -157,7 +161,7 @@ public class Board
                 NormalItem item = new NormalItem();
 
                 item.SetType(Utils.GetRandomNormalType());
-                item.SetView(m_itemViewPool, m_root);
+                item.SetView(m_itemFactory, m_root, m_skin);
 
                 cell.Assign(item);
                 cell.ApplyItemPosition(true);
@@ -292,7 +296,7 @@ public class Board
                 cellToConvert = matches[rnd];
             }
 
-            item.SetView(m_itemViewPool, m_root);
+            item.SetView(m_itemFactory, m_root, m_skin);
 
             cellToConvert.Free();
             cellToConvert.Assign(item);

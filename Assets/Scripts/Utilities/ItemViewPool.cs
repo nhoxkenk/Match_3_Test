@@ -5,7 +5,8 @@ using UnityEngine;
 public sealed class ItemViewPool
 {
     private readonly Transform m_owner;
-    private readonly Dictionary<string, ObjectPool<Transform>> m_pools = new Dictionary<string, ObjectPool<Transform>>();
+    private readonly Dictionary<GameObject, ObjectPool<Transform>> m_pools = new Dictionary<GameObject, ObjectPool<Transform>>();
+    private readonly Dictionary<string, GameObject> m_prefabs = new Dictionary<string, GameObject>();
     private readonly Dictionary<Transform, ObjectPool<Transform>> m_active = new Dictionary<Transform, ObjectPool<Transform>>();
 
     public ItemViewPool(Transform owner)
@@ -15,13 +16,23 @@ public sealed class ItemViewPool
 
     public Transform Get(string prefabName, Transform parent)
     {
-        ObjectPool<Transform> pool;
-        if (!m_pools.TryGetValue(prefabName, out pool))
+        GameObject prefab;
+        if (!m_prefabs.TryGetValue(prefabName, out prefab))
         {
-            GameObject prefab = Resources.Load<GameObject>(prefabName);
+            prefab = Resources.Load<GameObject>(prefabName);
             if (!prefab) return null;
+            m_prefabs.Add(prefabName, prefab);
+        }
+        return Get(prefab, parent);
+    }
+
+    public Transform Get(GameObject prefab, Transform parent)
+    {
+        ObjectPool<Transform> pool;
+        if (!m_pools.TryGetValue(prefab, out pool))
+        {
             pool = new ObjectPool<Transform>(prefab.transform, m_owner);
-            m_pools.Add(prefabName, pool);
+            m_pools.Add(prefab, pool);
         }
 
         Transform view = pool.Get(parent, Vector3.zero);

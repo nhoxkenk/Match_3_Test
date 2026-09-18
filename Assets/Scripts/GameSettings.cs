@@ -19,4 +19,8 @@ public class GameSettings : ScriptableObject
     [Min(1)] public int SpawnBatchSize = 4;
 
     [Min(1)] public int SpawnFrameInterval = 1;
+
+    public SkinType ItemSkin = SkinType.SkinType2;
+
+    public ItemSkinConfig[] ItemSkins;
 }

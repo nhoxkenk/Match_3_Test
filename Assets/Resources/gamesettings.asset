@@ -17,3 +17,10 @@ MonoBehaviour:
   MatchesMin: 3
   LevelMoves: 16
   LevelTime: 30
+  TimeForHint: 5
+  SpawnBatchSize: 4
+  SpawnFrameInterval: 1
+  ItemSkin: 1
+  ItemSkins:
+  - {fileID: 11400000, guid: c9da5b354c774a27bfb37e23a2465928, type: 2}
+  - {fileID: 11400000, guid: 689d34cefb334d5da6b5cd6bd5294641, type: 2}
